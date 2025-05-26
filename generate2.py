@@ -34,7 +34,7 @@ inputs = tokenizer.apply_chat_template(
 
 with torch.inference_mode():
     print(inputs)
-    outputs = model.generate(**inputs, max_new_tokens=64)
+    outputs = model.generate(**inputs, max_new_tokens=124)
     print(outputs)
 outputs = tokenizer.batch_decode(outputs)
 print(outputs)
