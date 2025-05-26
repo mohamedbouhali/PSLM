@@ -1,12 +1,13 @@
-from transformers import AutoTokenizer, BitsAndBytesConfig, Gemma3ForCausalLM
 import torch
+from transformers import AutoTokenizer, Gemma3ForCausalLM
 
 model_id = "google/gemma-3-1b-it"
-
-quantization_config = BitsAndBytesConfig(load_in_4bit=True)
-
+device = "cuda" if torch.cuda.is_available() else "cpu"
+# Load model in bfloat16 precision
 model = Gemma3ForCausalLM.from_pretrained(
-    model_id, quantization_config=quantization_config
+    model_id,
+    torch_dtype=torch.bfloat16,
+    device_map=device
 ).eval()
 
 tokenizer = AutoTokenizer.from_pretrained(model_id)
@@ -29,7 +30,7 @@ inputs = tokenizer.apply_chat_template(
     tokenize=True,
     return_dict=True,
     return_tensors="pt",
-).to(model.device).to(torch.bfloat16)
+).to(device).to(torch.bfloat16)
 
 
 with torch.inference_mode():
