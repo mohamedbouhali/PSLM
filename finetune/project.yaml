@@ -1,0 +1,9 @@
+# project.yaml
+base_model: google/gemma-2b-it
+project_name: gemma-psy-assistant
+tokenizer: google/gemma-2b-it
+datasets:
+  - path: qa_train.jsonl
+    type: chat
+  - path: /content/classification_train.jsonl
+    type: chat
