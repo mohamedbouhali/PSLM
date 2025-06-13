@@ -6,8 +6,9 @@ model:
 prompting:
   # "zero-shot": No examples, just the question
   # "one-shot": One random example from dataset
-  #"few-shot": Multiple examples from dataset
-  strategy: "few-shot"
+  # "few-shot": Multiple examples from dataset
+  # "all": Run all strategies and save results
+  strategy: "all"
   
   system_prompt: "You are a licensed therapist specializing in trauma, depression, and anxiety. 
   Your objective is to respond compassionately to users seeking emotional guidance. Always validate their 
@@ -31,4 +32,10 @@ dataset:
   name: "nbertagnolli/counsel-chat"
   split: "train"
   num_few_shot_examples: 3
+  # Single question ID (legacy support)
   target_question_id: 391
+  # Multiple question IDs to process
+  question_ids: [0, 1, 2, 3, 4, 391, 392, 393, 394, 395]
+
+output:
+  csv_path: "results.csv"
