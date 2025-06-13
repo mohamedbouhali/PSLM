@@ -32,10 +32,12 @@ dataset:
   name: "nbertagnolli/counsel-chat"
   split: "train"
   num_few_shot_examples: 3
-  # Single question ID (legacy support)
-  target_question_id: 391
-  # Multiple question IDs to process
-  question_ids: [0, 1, 2, 3, 4, 391, 392, 393, 394, 395]
+  # Number of questions to process (starting from the beginning)
+  # Set to 0 to process all questions
+  num_questions: 2
+  # If you want to process specific questions instead, uncomment and use this:
+  # question_ids: [391, 392, 393]
 
 output:
-  csv_path: "results.csv"
+# formatting issues need to be resolved
+  csv_path: "results/results.csv"

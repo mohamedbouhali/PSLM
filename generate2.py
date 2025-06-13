@@ -7,6 +7,7 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import pandas as pd
+import os
 torch.manual_seed(123)
 
 def calculate_similarity(text1, text2, model_name='all-MiniLM-L6-v2'):
@@ -25,21 +26,21 @@ def get_prompt_strategy(dataset, strategy, num_examples=3):
         return []
     elif strategy == "one-shot":
         # Get all unique question IDs
-        question_ids = set(row["questionID"] for row in dataset)
+        question_ids = set(row["question_id"] for row in dataset)
         # Randomly select one question ID
         selected_qid = random.choice(list(question_ids))
         # Get the best answer for this question
         best_answer = get_best_answer_by_question_id(dataset, selected_qid)
         return [{
             "role": "user",
-            "content": [{"type": "text", "text": "Here is an example of a client's question and my response:\n\nClient: " + best_answer["questionText"]}]
+            "content": [{"type": "text", "text": "Here is an example of a client's question and my response:\n\nClient: " + best_answer["question"]}]
         }, {
             "role": "assistant",
-            "content": [{"type": "text", "text": "Therapist: " + best_answer["answerText"]}]
+            "content": [{"type": "text", "text": "Therapist: " + best_answer["answer"]}]
         }]
     elif strategy == "few-shot":
         # Get all unique question IDs
-        question_ids = set(row["questionID"] for row in dataset)
+        question_ids = set(row["question_id"] for row in dataset)
         # Randomly select num_examples question IDs
         selected_qids = random.sample(list(question_ids), num_examples)
         few_shot_examples = []
@@ -49,22 +50,20 @@ def get_prompt_strategy(dataset, strategy, num_examples=3):
             few_shot_examples.extend([
                 {
                     "role": "user",
-                    "content": [{"type": "text", "text": f"Example {len(few_shot_examples)//2 + 1}:\n\nClient: {best_answer['questionText']}"}]
+                    "content": [{"type": "text", "text": f"Example {len(few_shot_examples)//2 + 1}:\n\nClient: {best_answer['question']}"}]
                 },
                 {
                     "role": "assistant",
-                    "content": [{"type": "text", "text": f"Therapist: {best_answer['answerText']}"}]
+                    "content": [{"type": "text", "text": f"Therapist: {best_answer['answer']}"}]
                 }
             ])
         return few_shot_examples
     return []
 
 def get_best_answer_by_question_id(dataset, question_id):
-    answers = [row for row in dataset if row["questionID"] == question_id]
+    answers = [row for row in dataset if row["question_id"] == question_id]
     if not answers:
-        raise ValueError(f"No answers found for questionID: {question_id}")
-
-    answers.sort(key=lambda x: (x.get("views", 0), x.get("upvotes", 0)), reverse=True)
+        raise ValueError(f"No answers found for question_id: {question_id}")
     return answers[0]
 
 def generate_response(model, tokenizer, messages, config, device):
@@ -150,42 +149,72 @@ def process_single_question(question_id, dataset_df, model, tokenizer, config, d
     strategies = ["zero-shot", "one-shot", "few-shot"] if config["prompting"]["strategy"] == "all" else [config["prompting"]["strategy"]]
 
     for strategy in strategies:
-        print(f"\n=== Running {strategy.upper()} Strategy ===")
-        
-        few_shot_examples = get_prompt_strategy(
-            dataset_df.to_dict('records'),
-            strategy,
-            config["dataset"]["num_few_shot_examples"]
-        )
+        try:
+            print(f"\n=== Running {strategy.upper()} Strategy ===")
+            
+            few_shot_examples = get_prompt_strategy(
+                dataset_df.to_dict('records'),
+                strategy,
+                config["dataset"]["num_few_shot_examples"]
+            )
 
-        messages = [
-            [
-                {
-                    "role": "system",
-                    "content": [{"type": "text", "text": config["prompting"]["system_prompt"]}]
-                },
-                *few_shot_examples,
-                {
-                    "role": "user",
-                    "content": [{"type": "text", "text": f"Client: {question}"}]
-                }
+            messages = [
+                [
+                    {
+                        "role": "system",
+                        "content": [{"type": "text", "text": config["prompting"]["system_prompt"]}]
+                    },
+                    *few_shot_examples,
+                    {
+                        "role": "user",
+                        "content": [{"type": "text", "text": f"Client: {question}"}]
+                    }
+                ]
             ]
-        ]
 
-        model_answer = generate_response(model, tokenizer, messages, config, device)
-        
-        # Calculate similarity between model's answer and dataset answer
-        similarity_score = calculate_similarity(model_answer, dataset_answer)
-        
-        print(f"\nModel's Response ({strategy}):")
-        print(model_answer)
-        print(f"\nSimilarity Score: {similarity_score:.4f}")
-        print("=" * 50)
+            model_answer = generate_response(model, tokenizer, messages, config, device)
+            
+            # Calculate similarity between model's answer and dataset answer
+            similarity_score = calculate_similarity(model_answer, dataset_answer)
+            
+            print(f"\nModel's Response ({strategy}):")
+            print(model_answer)
+            print(f"\nSimilarity Score: {similarity_score:.4f}")
+            print("=" * 50)
 
-        # Store the result
-        results[f"llm_{strategy.replace('-', '_')}"] = model_answer
+            # Store the result
+            results[f"llm_{strategy.replace('-', '_')}"] = model_answer
+            
+            # Save after each strategy
+            save_results([results], config["output"]["csv_path"])
+            print(f"Progress saved to {config['output']['csv_path']}")
+            
+        except Exception as e:
+            print(f"Error in {strategy} strategy for question ID {question_id}: {str(e)}")
+            continue
 
     return results
+
+def save_results(results, csv_path):
+    """Save results to CSV, appending if file exists."""
+    try:
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+        
+        # Convert results to DataFrame
+        df_new = pd.DataFrame(results)
+        
+        # If file exists, append to it
+        if os.path.exists(csv_path):
+            df_existing = pd.read_csv(csv_path)
+            df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+            df_combined.to_csv(csv_path, index=False)
+        else:
+            # If file doesn't exist, create new
+            df_new.to_csv(csv_path, index=False)
+        print(f"Results saved to {csv_path}")
+    except Exception as e:
+        print(f"Error saving results: {str(e)}")
 
 def main():
     config = load_config()
@@ -201,51 +230,29 @@ def main():
 
     tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
 
-    question_ids = config.get("dataset", {}).get("question_ids", [])
-    if not question_ids:
+    # Get list of question IDs to process from config
+    num_questions = config.get("dataset", {}).get("num_questions", 0)
+    if num_questions > 0:
+        # If num_questions is specified and greater than 0, take that many questions
+        question_ids = dataset_df['question_id'].unique()[:num_questions].tolist()
+        print(f"\nProcessing first {num_questions} questions: {question_ids}")
+    else:
+        # If num_questions is 0 or not specified, process all questions
         question_ids = dataset_df['question_id'].unique().tolist()
+        print(f"\nProcessing all {len(question_ids)} questions")
 
-    all_results = []
+    print(f"\nResults will be saved to: {config['output']['csv_path']}")
 
+    # Process each question
     for question_id in question_ids:
         try:
             results = process_single_question(question_id, dataset_df, model, tokenizer, config, device)
-            all_results.append(results)
         except Exception as e:
             print(f"Error processing question ID {question_id}: {str(e)}")
             continue
 
-    df = pd.DataFrame(all_results)
-    csv_path = config.get("output", {}).get("csv_path", "results.csv")
-    df.to_csv(csv_path, index=False)
-    print(f"\nResults saved to {csv_path}")
-
 if __name__ == "__main__":
-    import argparse
-    
-    parser = argparse.ArgumentParser(description='Generate responses using different strategies')
-    parser.add_argument('--question_id', type=str, help='Specific question ID to process')
-    parser.add_argument('--num_questions', type=int, help='Number of questions to process starting from the beginning')
-    parser.add_argument('--config', default='config.yaml', help='Path to config file')
-    parser.add_argument('--output', default='results.csv', help='Output CSV path')
-    
-    args = parser.parse_args()
-    
-    if args.question_id:
-        # Load config and modify it to only process the specified question
-        config = load_config(args.config)
-        config["dataset"]["question_ids"] = [args.question_id]
-        config["output"]["csv_path"] = args.output
-        main()
-    elif args.num_questions:
-        config = load_config(args.config)
-        dataset_df = pd.read_csv("best-answers-counsel-chat.csv")
-        question_ids = dataset_df['question_id'].unique()[:args.num_questions].tolist()
-        config["dataset"]["question_ids"] = question_ids
-        config["output"]["csv_path"] = args.output
-        main()
-    else:
-        main()
+    main()
 
 # ["<bos><start_of_turn>user\nYou are a helpful assistant.\n\nWrite a poem on Hugging Face, the company<end_of_turn>\n<start_of_turn>model\nOkay, here's a poem about Hugging Face, aiming to capture its essence and impact:\n\n---\n\nThe algorithm's a gentle hand,\nAcross the data, a shifting sand.\nHugging Face, a vibrant hue,\nOf models born, for me and you.\n\nFrom transformers, a"]
 
