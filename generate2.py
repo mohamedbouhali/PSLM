@@ -7,11 +7,11 @@ df = pd.read_csv("./finetune/cleaned.csv")
 
 model_id = "google/gemma-3-1b-it"
 
-device = "mps" if torch.cuda.is_available() else "cpu"
+device = "cuda" if torch.cuda.is_available() else "cpu"
 torch.manual_seed(42)  # Ensures reproducibility
 model = Gemma3ForCausalLM.from_pretrained(
     model_id,
-    torch_dtype=torch.bfloat16,
+    torch_dtype=torch.float16,
     device_map=device
 ).eval()
 
@@ -37,7 +37,7 @@ def generate_response(question: str, system_prompt= "You are a helpful assistant
         tokenize=True,
         return_dict=True,
         return_tensors="pt",
-    ).to(device).to(torch.bfloat16)
+    ).to(device).to(torch.float16)
 
 
     with torch.inference_mode():
@@ -86,8 +86,23 @@ Always aim to be grounding, nonjudgmental, and helpful.
 
 """
 
+# Apply gemma to the questions
 df["gemma_answer"] = df["questionText"].progress_apply(generate_response, system_prompt=prompt)
 
 # Save the new DataFrame
-df[["questionID", "questionText", "answerText", "gemma_answer", "upvotes", "views"]].to_csv("cleaned_with_gemma_answers.csv", index=False)
-print(df[["questionID", "questionText", "answerText", "gemma_answer"]].head())
+# 1. Select the desired columns
+df_selected = df[["questionText", "answerText", "gemma_answer"]]
+
+# 2. Rename the columns
+df_renamed = df_selected.rename(columns={
+    "questionText": "question",
+    "answerText": "answer",
+    "gemma_answer": "gemma_CoT"
+})
+
+# 3. Save the new DataFrame to a CSV file
+output_csv_filename = "gemma_CoT.csv" # Choose a new filename
+df_renamed.to_csv(output_csv_filename, index=False)
+
+print(f"Successfully saved selected and renamed columns to '{output_csv_filename}'")
+print(df_renamed.head())
