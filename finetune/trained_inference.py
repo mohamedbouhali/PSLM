@@ -13,7 +13,7 @@ os.environ["TORCHDYNAMO_DISABLE"] = "1"
 torch._dynamo.config.suppress_errors = True
 
 model_id = "google/gemma-3-1b-it"
-peft_model_id = "/home/ge53wex/PSLM/finetune/output/lora-4/v0-20250705-155755/checkpoint-43/"
+peft_model_id = "/home/ge53wex/PSLM/finetune/output/lora-16/v0-20250705-215100/checkpoint-43/"
 config = PeftConfig.from_pretrained(peft_model_id)
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -53,7 +53,7 @@ def generate_answer_question(best_answer_file):
 
     # Process each question from the CSV
     #data = data.iloc[501:800]
-    for _, row in data.iterrows():
+    for idx, (_, row) in enumerate(data.iterrows(), 1):
         input_message = row['questionText']
         print("inference question:\n", input_message)
         messages = [
@@ -97,6 +97,7 @@ def generate_answer_question(best_answer_file):
         questions.append(input_message)
         predictions.append(postCleaned)
         answers.append(row['answerText'])
+        print(f"Inference progress: {idx}/{len(data)}")
 
     # Create output DataFrame and save to CSV
     output_df = pd.DataFrame({
@@ -107,7 +108,7 @@ def generate_answer_question(best_answer_file):
     })
     
     # Save to CSV with fixed name
-    output_file = 'lora-4.csv'
+    output_file = 'lora-16.csv'
     output_df.to_csv(output_file, index=False)
     print(f"Results saved to {output_file}")
 
