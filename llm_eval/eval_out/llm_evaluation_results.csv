@@ -1,0 +1,7 @@
+Metric,Range,Interpretation,gemma_answer
+BLEU-1,0–1.0,Word precision,0.14211637581316683
+BLEU-4,0–1.0,Up-to-4-gram,0.005761435858694701
+METEOR,0–1.0,Stem/synonym recall,0.15394776427410795
+ROUGE-L,0–1.0,Longest common subsequence,0.138934297773306
+CIDEr,0–10.0,TF-IDF consensus,0.005133246823197226
+CosineSim(Nomic),0–1.0,Embedding similarity,0.5645020604133606
