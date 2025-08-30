@@ -2,7 +2,7 @@
 
 A comprehensive framework for fine-tuning and evaluating language models on counseling and psychological support data using various prompting strategies.
 
-## 🚀 Overview
+## Overview
 
 This repository contains a complete pipeline for:
 - **Data Preparation**: Cleaning and structuring counseling chat data
@@ -10,7 +10,7 @@ This repository contains a complete pipeline for:
 - **Evaluation**: Testing models with zero-shot, one-shot, and few-shot prompting strategies
 - **Generation**: Producing therapeutic responses using fine-tuned models
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 PSLM/
@@ -28,7 +28,7 @@ PSLM/
 └── zero-single-few-shots-config.yaml # Configuration for evaluation
 ```
 
-## 🔧 Data Preparation
+## Data Preparation
 
 ### Input Data Format
 The system processes counseling data with the following columns:
@@ -45,7 +45,7 @@ The system processes counseling data with the following columns:
 - **`qa_train.jsonl`**: Q&A instruction-tuning dataset
 - **`classification_train.jsonl`**: Topic classification dataset
 
-## 🎯 Training
+## Training
 
 ### Quick Start
 Use the MS-Swift framework for fine-tuning:
@@ -77,7 +77,7 @@ swift sft \
 - **Fine-tuning Method**: LoRA (Low-Rank Adaptation)
 - **Training Strategy**: Multiple approaches (zero-shot, one-shot, few-shot)
 
-## 🧪 Evaluation & Generation
+## Evaluation & Generation
 
 ### Prompting Strategies
 - **Zero-shot**: Direct question answering without examples
@@ -96,14 +96,14 @@ Modify `zero-single-few-shots-config.yaml` to adjust:
 - System prompts
 - Output formatting
 
-## 📊 Model Performance
+## Model Performance
 
 The repository includes pre-trained models with different approaches:
 - **LoRA Rank 8**: Optimized for efficiency
 - **Multiple Strategies**: Compare different prompting methods
 - **Training Metrics**: Comprehensive evaluation logs and visualizations
 
-## 🛠️ Requirements
+## Requirements
 
 - Python 3.8+
 - PyTorch
@@ -111,16 +111,12 @@ The repository includes pre-trained models with different approaches:
 - MS-Swift (for training)
 - CUDA-compatible GPU (recommended)
 
-## 📝 Notes
+## Notes
 
 - Monitor GPU usage during training: `sudo powermetrics --samplers gpu_power -i 1000 -n 10`
 - Adjust the `n` parameter in `CounselChatDataPrep.ipynb` to control data filtering
 - All fine-tuned models are saved with comprehensive training logs and metrics
 
-## 🤝 Contributing
+## Contributing
 
 This project focuses on psychological support and counseling applications. Please ensure all contributions maintain appropriate ethical standards for mental health applications.
-
----
-
-**Happy fine-tuning! 🚀**
